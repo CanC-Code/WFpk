@@ -1,4 +1,4 @@
-name: Genesis 10.0 - Platinum Protocol
+name: Genesis 11.0 - Platinum Perfection
 
 on:
   push:
@@ -25,312 +25,160 @@ jobs:
         run: |
           cd MyPokemonGame
           
-          # --- SCRIPT 1: PLATINUM SCAFFOLD ---
+          # --- 1. SCAFFOLD (AndroidX + Build Tools) ---
           cat << 'EOF' > scripts/1-scaffold.py
           import os
           def create_file(path, content):
               dir_name = os.path.dirname(path)
               if dir_name: os.makedirs(dir_name, exist_ok=True)
-              with open(path, 'w', encoding='utf-8') as f:
-                  f.write(content)
-
+              with open(path, 'w', encoding='utf-8') as f: f.write(content)
           create_file("build.gradle", "plugins { id 'com.android.application' version '8.4.0' apply false }")
           create_file("settings.gradle", "pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }; dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }; include ':app'")
           create_file("gradle.properties", "android.useAndroidX=true\nandroid.enableJetifier=true")
-          create_file("app/build.gradle", "plugins { id 'com.android.application' }; android { namespace 'com.genesis.pokemon'; compileSdk 34; defaultConfig { applicationId 'com.genesis.pokemon'; minSdk 24; targetSdk 34; versionCode 1; versionName '4.0' }; buildTypes { release { minifyEnabled false } }; compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 } }; dependencies { implementation 'androidx.appcompat:appcompat:1.6.1'; implementation 'com.google.android.material:material:1.9.0' }")
+          create_file("app/build.gradle", "plugins { id 'com.android.application' }; android { namespace 'com.genesis.pokemon'; compileSdk 34; defaultConfig { applicationId 'com.genesis.pokemon'; minSdk 24; targetSdk 34; versionCode 1; versionName '1.0' }; buildTypes { release { minifyEnabled false } }; compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 } }; dependencies { implementation 'androidx.appcompat:appcompat:1.6.1'; implementation 'com.google.android.material:material:1.9.0' }")
           create_file("app/src/main/AndroidManifest.xml", '<?xml version="1.0" encoding="utf-8"?><manifest xmlns:android="http://schemas.android.com/apk/res/android"><application android:label="Pokemon Platinum" android:theme="@style/Theme.Material3.DayNight.NoActionBar"><activity android:name=".MainActivity" android:exported="true" android:screenOrientation="landscape"><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity></application></manifest>')
           EOF
 
-          # --- SCRIPT 2: PLATINUM UI & JOYSTICK ---
+          # --- 2. UI (Joystick & Menu) ---
           cat << 'EOF' > scripts/2-ui.py
           import os
           def create_file(path, content):
               dir_name = os.path.dirname(path)
               if dir_name: os.makedirs(dir_name, exist_ok=True)
               with open(path, 'w', encoding='utf-8') as f: f.write(content)
-
           layout = """<?xml version="1.0" encoding="utf-8"?>
           <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000000">
               <com.genesis.pokemon.GameView android:id="@+id/game_viewport" android:layout_width="match_parent" android:layout_height="match_parent" />
-              
-              <View android:id="@+id/joystick_base" android:layout_width="180dp" android:layout_height="180dp" android:layout_gravity="bottom|start" android:layout_margin="30dp" android:background="@android:drawable/btn_default_small" android:alpha="0.25"/>
-
-              <RelativeLayout android:layout_width="180dp" android:layout_height="120dp" android:layout_gravity="bottom|end" android:layout_margin="30dp">
-                  <Button android:id="@+id/btn_b" android:layout_width="75dp" android:layout_height="75dp" android:text="B" android:backgroundTint="#D32F2F" android:layout_alignParentBottom="true" android:textColor="#FFF"/>
-                  <Button android:id="@+id/btn_a" android:layout_width="75dp" android:layout_height="75dp" android:text="A" android:backgroundTint="#1976D2" android:layout_alignParentEnd="true" android:layout_alignParentTop="true" android:textColor="#FFF"/>
+              <View android:id="@+id/joystick_base" android:layout_width="160dp" android:layout_height="160dp" android:layout_gravity="bottom|start" android:layout_margin="30dp" android:background="@android:drawable/btn_default_small" android:alpha="0.3"/>
+              <RelativeLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="bottom|end" android:layout_margin="30dp">
+                  <Button android:id="@+id/btn_b" android:layout_width="70dp" android:layout_height="70dp" android:text="B" android:backgroundTint="#D32F2F" android:layout_marginEnd="10dp"/>
+                  <Button android:id="@+id/btn_a" android:layout_width="70dp" android:layout_height="70dp" android:text="A" android:backgroundTint="#1976D2" android:layout_toEndOf="@id/btn_b" android:layout_marginTop="-20dp"/>
               </RelativeLayout>
-
-              <Button android:id="@+id/btn_start" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="MENU" android:layout_gravity="bottom|center_horizontal" android:layout_marginBottom="25dp" android:backgroundTint="#455A64"/>
-
-              <LinearLayout android:id="@+id/rpg_menu" android:layout_width="240dp" android:layout_height="wrap_content" android:layout_gravity="end|top" android:layout_margin="20dp" android:orientation="vertical" android:background="#F5F5F5" android:padding="15dp" android:elevation="8dp" android:visibility="gone">
-                  <Button android:id="@+id/menu_pokedex" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="POKÉDEX" android:textColor="#000" android:backgroundTint="#E0E0E0" android:layout_marginBottom="5dp"/>
-                  <Button android:id="@+id/menu_bag" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="BAG" android:textColor="#000" android:backgroundTint="#E0E0E0" android:layout_marginBottom="5dp"/>
-                  <Button android:id="@+id/menu_save" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="SAVE" android:textColor="#000" android:backgroundTint="#E0E0E0"/>
-              </LinearLayout>
-              
-              <ListView android:id="@+id/data_list" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#FFFFFF" android:visibility="gone" />
           </FrameLayout>"""
           create_file("app/src/main/res/layout/activity_main.xml", layout)
           EOF
 
-          # --- SCRIPT 3: PLATINUM ASSETS (Sinnoh Trainer + Follower) ---
+          # --- 3. ASSETS (Sinnoh Sprite Sheets) ---
           cat << 'EOF' > scripts/3-assets.py
-          import os, requests, json
-          from PIL import Image, ImageDraw
-
+          import os, requests
+          from PIL import Image
           os.makedirs("app/src/main/assets/sprites", exist_ok=True)
           os.makedirs("app/src/main/assets/tiles", exist_ok=True)
-
-          # 1. Fetch Platinum Trainer (Lucas/Dawn Style)
-          # We use a 3-frame wide, 4-frame high walking sheet format (48x128 total at 16x32 per frame)
-          # Source: PokeAPI Trainers or Decomp
-          trainer_url = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/trainers/1.png"
-          with open("app/src/main/assets/sprites/trainer_base.png", 'wb') as f:
+          # Fetching real walking sheets from Pokemon Emerald/Platinum Decomp
+          # Trainer Walking Sheet (4 rows for 4 directions)
+          trainer_url = "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/object_events/pics/people/brendan/normal.png"
+          with open("app/src/main/assets/sprites/trainer_sheet.png", 'wb') as f:
               f.write(requests.get(trainer_url).content)
-
-          # 2. Fetch Platinum Style Pikachu
-          r_pika = requests.get("https://pokeapi.co/api/v2/pokemon/pikachu").json()
-          with open("app/src/main/assets/sprites/follower.png", 'wb') as f:
-              f.write(requests.get(r_pika['sprites']['front_default']).content)
-
-          # 3. Generate Sinnoh Town Tileset (32x32 Tiles)
-          tiles = Image.new("RGBA", (192, 32))
-          d = ImageDraw.Draw(tiles)
-          d.rectangle([0,0,32,32], fill="#43A047")    # 0: Grass
-          d.rectangle([32,0,64,32], fill="#BDBDBD")   # 1: Path
-          d.rectangle([64,0,96,32], fill="#5D4037")   # 2: House Wall
-          d.rectangle([96,0,128,32], fill="#C62828")  # 3: PokeCenter
-          d.rectangle([128,0,160,32], fill="#1B5E20") # 4: Solid Tree
-          tiles.save("app/src/main/assets/tiles/platinum_tiles.png")
-
-          # 4. Fetch 151 Pokemon Data
-          pk = []
-          for i in range(1, 21): # Limited for speed, increase as needed
-              try:
-                  res = requests.get(f"https://pokeapi.co/api/v2/pokemon/{i}").json()
-                  pk.append({"id": i, "name": res['name'].capitalize(), "hp": res['stats'][0]['base_stat']})
-              except: pass
-          with open("app/src/main/assets/pokedex.json", 'w') as f: json.dump(pk, f)
+          # World Tileset (Houses, Grass, Center)
+          tiles_url = "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/tilesets/secondary/petalburg/tiles.png"
+          with open("app/src/main/assets/tiles/world_tiles.png", 'wb') as f:
+              f.write(requests.get(tiles_url).content)
           EOF
 
-          # --- SCRIPT 4: THE PLATINUM ENGINE (Strict 4-Way + Animated Frames) ---
+          # --- 4. ENGINE (The Frame Slicer) ---
           cat << 'EOF' > scripts/4-engine.py
           import os
           def create_file(path, content):
               dir_name = os.path.dirname(path)
               if dir_name: os.makedirs(dir_name, exist_ok=True)
               with open(path, 'w', encoding='utf-8') as f: f.write(content)
-
           java_path = "app/src/main/java/com/genesis/pokemon"
-
-          create_file(f"{java_path}/AssetManager.java", """package com.genesis.pokemon;
-          import android.content.Context;
-          import android.graphics.Bitmap;
-          import android.graphics.BitmapFactory;
-          import java.util.HashMap;
-          public class AssetManager {
-              private static HashMap<String, Bitmap> cache = new HashMap<>();
-              public static Bitmap get(Context ctx, String type, String name) {
-                  String key = type + "_" + name;
-                  if (cache.containsKey(key)) return cache.get(key);
-                  try {
-                      Bitmap b = BitmapFactory.decodeStream(ctx.getAssets().open(type + "/" + name + ".png"));
-                      cache.put(key, b); return b;
-                  } catch (Exception e) { return null; }
-              }
-          }""")
 
           create_file(f"{java_path}/GameView.java", """package com.genesis.pokemon;
           import android.content.Context;
           import android.graphics.*;
           import android.util.AttributeSet;
           import android.view.SurfaceView;
-          import java.util.LinkedList;
 
           public class GameView extends SurfaceView implements Runnable {
               private Thread thread;
-              public boolean r;
-              public float px=200, py=200, fx=200, fy=280;
-              public float vx=0, vy=0; // Joystick Velocity
-              public int direction = 0; // 0=Down, 1=Up, 2=Left, 3=Right
-              private int animStep = 0;
+              private boolean running;
+              public float px=300, py=300, vx=0, vy=0;
+              private int direction = 0; // 0=Down, 1=Up, 2=Left, 3=Right
+              private int animFrame = 0;
               private int frameCounter = 0;
-              private LinkedList<PointF> history = new LinkedList<>();
-
-              // Map: 0=Grass, 1=Path, 2=Wall, 3=PokeCenter, 4=Tree
-              private int[][] map = {
-                  {4,4,4,4,4,4,4,4,4,4},
-                  {4,0,0,1,1,3,3,0,0,4},
-                  {4,0,2,2,1,1,1,0,0,4},
-                  {4,0,0,1,1,0,0,0,0,4},
-                  {4,4,4,4,4,4,4,4,4,4}
-              };
 
               public GameView(Context c, AttributeSet a) { super(c, a); }
 
               @Override public void run() {
-                  while (r) {
+                  while (running) {
                       if (!getHolder().getSurface().isValid()) continue;
-                      Canvas c = getHolder().lockCanvas();
+                      Canvas canvas = getHolder().lockCanvas();
                       update();
-                      drawFrame(c);
-                      getHolder().unlockCanvasAndPost(c);
+                      drawFrame(canvas);
+                      getHolder().unlockCanvasAndPost(canvas);
                       try { Thread.sleep(16); } catch (Exception e) {}
                   }
               }
 
               private void update() {
-                  float speed = 7;
-                  float tx = px, ty = py;
-                  
-                  // STICK SNAPPING: Force the movement to the dominant axis
+                  float speed = 6;
+                  // Dominant Axis Snapping for strict 4-way movement
                   if (Math.abs(vx) > Math.abs(vy)) {
-                      if (vx > 0) { tx += speed; direction = 3; } else if (vx < 0) { tx -= speed; direction = 2; }
-                  } else {
-                      if (vy > 0) { ty += speed; direction = 0; } else if (vy < 0) { ty -= speed; direction = 1; }
+                      px += Math.signum(vx) * speed;
+                      direction = (vx > 0) ? 3 : 2;
+                  } else if (vy != 0) {
+                      py += Math.signum(vy) * speed;
+                      direction = (vy > 0) ? 0 : 1;
                   }
-
+                  
                   if (vx != 0 || vy != 0) {
                       frameCounter++;
-                      if (frameCounter > 8) { animStep = (animStep + 1) % 4; frameCounter = 0; }
-                  } else { animStep = 0; }
-
-                  // Collision (Tile size = 96 scaled)
-                  int gx = (int)((tx+48)/96), gy = (int)((ty+48)/96);
-                  if (gy >= 0 && gy < map.length && gx >= 0 && gx < map[0].length) {
-                      if (map[gy][gx] < 2) { px = tx; py = ty; }
-                  }
-
-                  if (vx != 0 || vy != 0) {
-                      history.addFirst(new PointF(px, py));
-                      if (history.size() > 12) history.removeLast();
-                  }
+                      if (frameCounter > 8) { animFrame = (animFrame + 1) % 3; frameCounter = 0; }
+                  } else { animFrame = 1; } // Idle frame
               }
 
-              private void drawFrame(Canvas c) {
-                  c.drawColor(Color.BLACK);
-                  Bitmap tiles = AssetManager.get(getContext(), "tiles", "platinum_tiles");
-                  if (tiles != null) {
-                      for (int y=0; y<map.length; y++) {
-                          for (int x=0; x<map[0].length; x++) {
-                              int tIdx = map[y][x];
-                              Rect src = new Rect(tIdx*32, 0, (tIdx*32)+32, 32);
-                              Rect dst = new Rect(x*96, y*96, (x+1)*96, (y+1)*96);
-                              c.drawBitmap(tiles, src, dst, null);
-                          }
-                      }
-                  }
-
-                  Bitmap trainer = AssetManager.get(getContext(), "sprites", "trainer_base");
-                  if (trainer != null) {
-                      // Sine wave bob for walking animation
-                      float bob = (vx != 0 || vy != 0) ? (float)Math.sin(animStep * 1.5) * 8 : 0;
-                      c.drawBitmap(trainer, px-48, py-96 + bob, null);
-                  }
+              private void drawFrame(Canvas canvas) {
+                  canvas.drawColor(Color.parseColor("#388E3C")); // Grass
                   
-                  Bitmap follower = AssetManager.get(getContext(), "sprites", "follower");
-                  if (follower != null && history.size() > 10) {
-                      PointF fPos = history.get(10);
-                      c.drawBitmap(follower, fPos.x-48, fPos.y-48, null);
-                  }
+                  Bitmap sheet = BitmapFactory.decodeStream(null); // Managed by SpriteManager
+                  try {
+                      InputStream is = getContext().getAssets().open("sprites/trainer_sheet.png");
+                      Bitmap b = BitmapFactory.decodeStream(is);
+                      // Slicing Brendan: 16x32 pixels per frame
+                      int srcX = animFrame * 16;
+                      int srcY = direction * 32;
+                      Rect src = new Rect(srcX, srcY, srcX + 16, srcY + 32);
+                      Rect dst = new Rect((int)px-32, (int)py-64, (int)px+32, (int)py+64);
+                      canvas.drawBitmap(b, src, dst, null);
+                  } catch (Exception e) {}
               }
-              public void resume() { r = true; thread = new Thread(this); thread.start(); }
-              public void pause() { r = false; }
+              public void resume() { running = true; thread = new Thread(this); thread.start(); }
+              public void pause() { running = false; }
           }""")
-          EOF
-
-          # --- SCRIPT 5: ACTIVITY LOGIC & QOL ---
-          cat << 'EOF' > scripts/5-main.py
-          import os
-          def create_file(path, content):
-              dir_name = os.path.dirname(path)
-              if dir_name: os.makedirs(dir_name, exist_ok=True)
-              with open(path, 'w', encoding='utf-8') as f: f.write(content)
-
-          java_path = "app/src/main/java/com/genesis/pokemon"
-
+          
+          # Fix MainActivity
           create_file(f"{java_path}/MainActivity.java", """package com.genesis.pokemon;
           import android.app.Activity;
           import android.os.Bundle;
           import android.view.MotionEvent;
-          import android.view.View;
-          import android.widget.ArrayAdapter;
-          import android.widget.ListView;
-          import org.json.JSONArray;
-          import java.io.InputStream;
-          import java.util.ArrayList;
 
           public class MainActivity extends Activity {
               private GameView gv;
-              private View rpgMenu;
-              private ListView dataList;
-
               @Override protected void onCreate(Bundle b) {
                   super.onCreate(b);
                   setContentView(R.layout.activity_main);
                   gv = findViewById(R.id.game_viewport);
-                  rpgMenu = findViewById(R.id.rpg_menu);
-                  dataList = findViewById(R.id.data_list);
-
                   findViewById(R.id.joystick_base).setOnTouchListener((v, e) -> {
-                      if (e.getAction() == MotionEvent.ACTION_UP) { 
-                          gv.vx = 0; gv.vy = 0; 
-                      } else {
+                      if (e.getAction() == MotionEvent.ACTION_UP) { gv.vx=0; gv.vy=0; }
+                      else {
                           gv.vx = e.getX() - (v.getWidth()/2f);
                           gv.vy = e.getY() - (v.getHeight()/2f);
                       }
                       return true;
                   });
-
-                  findViewById(R.id.btn_start).setOnClickListener(v -> {
-                      if (rpgMenu.getVisibility() == View.VISIBLE) {
-                          rpgMenu.setVisibility(View.GONE); gv.resume();
-                      } else {
-                          rpgMenu.setVisibility(View.VISIBLE); gv.pause();
-                      }
-                  });
-
-                  findViewById(R.id.menu_pokedex).setOnClickListener(v -> {
-                      rpgMenu.setVisibility(View.GONE); dataList.setVisibility(View.VISIBLE);
-                      ArrayList<String> entries = new ArrayList<>();
-                      try {
-                          InputStream is = getAssets().open("pokedex.json");
-                          byte[] buf = new byte[is.available()]; is.read(buf);
-                          JSONArray arr = new JSONArray(new String(buf));
-                          for(int i=0; i<arr.length(); i++) {
-                              entries.add("#" + arr.getJSONObject(i).getInt("id") + " " + arr.getJSONObject(i).getString("name") + " [HP: " + arr.getJSONObject(i).getInt("hp") + "]");
-                          }
-                      } catch (Exception ex) {}
-                      dataList.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, entries));
-                  });
-
-                  dataList.setOnItemClickListener((parent, view, position, id) -> {
-                      dataList.setVisibility(View.GONE); gv.resume();
-                  });
               }
               @Override protected void onResume() { super.onResume(); gv.resume(); }
-              @Override protected void onPause() { super.onPause(); gv.pause(); }
           }""")
           EOF
 
-      - name: Execute Pipeline
+      - name: Build Project
         run: |
           cd MyPokemonGame
           python scripts/1-scaffold.py
           python scripts/2-ui.py
           python scripts/3-assets.py
           python scripts/4-engine.py
-          python scripts/5-main.py
-
-      - name: Build APK (Pinned Gradle 8.7)
-        run: |
-          cd MyPokemonGame
           gradle wrapper --gradle-version 8.7
           chmod +x gradlew
           ./gradlew assembleDebug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Platinum-Protocol-APK
-          path: MyPokemonGame/app/build/outputs/apk/debug/app-debug.apk
