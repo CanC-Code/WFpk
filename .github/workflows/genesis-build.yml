@@ -1,0 +1,231 @@
+name: Genesis Pokemon Engine Build
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-from-scratch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          pip install Pillow requests
+
+      - name: Create Workspace & Scripts Directory
+        run: |
+          mkdir -p MyPokemonGame/scripts
+          cd MyPokemonGame
+
+      - name: Write Script 1 - Project Scaffold
+        run: |
+          cat << 'EOF' > MyPokemonGame/scripts/1-scaffold.py
+          import os
+
+          def create_file(path, content):
+              os.makedirs(os.path.dirname(path), exist_ok=True)
+              with open(path, 'w', encoding='utf-8') as f:
+                  f.write(content)
+
+          print("Generating Android Gradle Structure...")
+
+          # 1. Root build.gradle
+          create_file("build.gradle", """
+          buildscript {
+              repositories { google(); mavenCentral() }
+              dependencies { classpath 'com.android.tools.build:gradle:8.1.0' }
+          }
+          allprojects {
+              repositories { google(); mavenCentral() }
+          }
+          """)
+
+          # 2. settings.gradle
+          create_file("settings.gradle", "include ':app'")
+
+          # 3. app/build.gradle
+          create_file("app/build.gradle", """
+          plugins { id 'com.android.application' }
+          android {
+              namespace 'com.genesis.pokemon'
+              compileSdk 34
+              defaultConfig {
+                  applicationId "com.genesis.pokemon"
+                  minSdk 24
+                  targetSdk 34
+                  versionCode 1
+                  versionName "1.0"
+              }
+              buildTypes {
+                  release { minifyEnabled false }
+              }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_1_8
+                  targetCompatibility JavaVersion.VERSION_1_8
+              }
+          }
+          """)
+
+          # 4. AndroidManifest.xml
+          create_file("app/src/main/AndroidManifest.xml", """<?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application android:allowBackup="true" android:icon="@mipmap/ic_launcher" android:label="Genesis Poke" android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+                  <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="landscape">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          """)
+
+          # 5. MainActivity.java (The Core Game Loop Placeholder)
+          create_file("app/src/main/java/com/genesis/pokemon/MainActivity.java", """package com.genesis.pokemon;
+          import android.app.Activity;
+          import android.os.Bundle;
+          public class MainActivity extends Activity {
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  setContentView(R.layout.activity_main);
+              }
+          }
+          """)
+          print("Scaffold complete.")
+          EOF
+
+      - name: Write Script 2 - UI & Controller Overlay
+        run: |
+          cat << 'EOF' > MyPokemonGame/scripts/2-controller.py
+          import os
+
+          print("Generating Touch Controller UI...")
+          # We create an XML layout with a Game Screen area and a bottom Controller area
+          layout_xml = """<?xml version="1.0" encoding="utf-8"?>
+          <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:background="#000000">
+
+              <FrameLayout
+                  android:id="@+id/game_viewport"
+                  android:layout_width="match_parent"
+                  android:layout_height="match_parent"
+                  android:background="#4CAF50" /> <RelativeLayout
+                  android:layout_width="150dp"
+                  android:layout_height="150dp"
+                  android:layout_alignParentBottom="true"
+                  android:layout_alignParentStart="true"
+                  android:layout_margin="20dp">
+                  <Button android:id="@+id/btn_up" android:layout_width="50dp" android:layout_height="50dp" android:text="U" android:layout_alignParentTop="true" android:layout_centerHorizontal="true"/>
+                  <Button android:id="@+id/btn_down" android:layout_width="50dp" android:layout_height="50dp" android:text="D" android:layout_alignParentBottom="true" android:layout_centerHorizontal="true"/>
+                  <Button android:id="@+id/btn_left" android:layout_width="50dp" android:layout_height="50dp" android:text="L" android:layout_centerVertical="true" android:layout_alignParentStart="true"/>
+                  <Button android:id="@+id/btn_right" android:layout_width="50dp" android:layout_height="50dp" android:text="R" android:layout_centerVertical="true" android:layout_alignParentEnd="true"/>
+              </RelativeLayout>
+
+              <LinearLayout
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:layout_alignParentBottom="true"
+                  android:layout_alignParentEnd="true"
+                  android:layout_margin="30dp"
+                  android:orientation="horizontal">
+                  <Button android:id="@+id/btn_b" android:layout_width="60dp" android:layout_height="60dp" android:text="B" android:layout_marginEnd="10dp" android:backgroundTint="#FF5252"/>
+                  <Button android:id="@+id/btn_a" android:layout_width="60dp" android:layout_height="60dp" android:text="A" android:layout_marginTop="-20dp" android:backgroundTint="#448AFF"/>
+              </LinearLayout>
+
+          </RelativeLayout>
+          """
+          
+          path = "app/src/main/res/layout/activity_main.xml"
+          os.makedirs(os.path.dirname(path), exist_ok=True)
+          with open(path, 'w', encoding='utf-8') as f:
+              f.write(layout_xml)
+          
+          # Add placeholder string resources to satisfy Android compiler
+          res_path = "app/src/main/res/values/strings.xml"
+          os.makedirs(os.path.dirname(res_path), exist_ok=True)
+          with open(res_path, 'w', encoding='utf-8') as f:
+              f.write('<resources><string name="app_name">Genesis Poke</string></resources>')
+              
+          print("Controller layout generated.")
+          EOF
+
+      - name: Write Script 3 - Asset Ripper (Pokemon & Cries)
+        run: |
+          cat << 'EOF' > MyPokemonGame/scripts/3-fetch-data.py
+          import os, requests, json
+
+          print("Fetching Pokemon Assets...")
+          ASSETS_DIR = "app/src/main/assets"
+          os.makedirs(f"{ASSETS_DIR}/sprites", exist_ok=True)
+          os.makedirs(f"{ASSETS_DIR}/sounds", exist_ok=True)
+
+          # Fetch a small test batch (Starters) to keep build times fast
+          pokemon_list = ["bulbasaur", "charmander", "squirtle"]
+          pokedex = []
+
+          for name in pokemon_list:
+              try:
+                  print(f"Downloading {name}...")
+                  # 1. Fetch Stats
+                  res = requests.get(f"https://pokeapi.co/api/v2/pokemon/{name}")
+                  data = res.json()
+                  pokedex.append({
+                      "name": name.capitalize(),
+                      "hp": data['stats'][0]['base_stat'],
+                      "atk": data['stats'][1]['base_stat']
+                  })
+                  
+                  # 2. Fetch Sprite (Static PNG for native Android ImageView support in raw Java)
+                  sprite_url = data['sprites']['front_default']
+                  sprite_res = requests.get(sprite_url)
+                  with open(f"{ASSETS_DIR}/sprites/{name}.png", 'wb') as f:
+                      f.write(sprite_res.content)
+                      
+                  # 3. Fetch Cry
+                  cry_url = f"https://play.pokemonshowdown.com/audio/cries/{name}.ogg"
+                  cry_res = requests.get(cry_url)
+                  if cry_res.status_code == 200:
+                      with open(f"{ASSETS_DIR}/sounds/{name}.ogg", 'wb') as f:
+                          f.write(cry_res.content)
+              except Exception as e:
+                  print(f"Failed to fetch {name}: {e}")
+
+          # Write internal JSON database
+          with open(f"{ASSETS_DIR}/pokedex.json", 'w') as f:
+              json.dump(pokedex, f, indent=4)
+              
+          print("Asset pipeline complete.")
+          EOF
+
+      - name: Execute Python Genesis Scripts
+        run: |
+          cd MyPokemonGame
+          python scripts/1-scaffold.py
+          python scripts/2-controller.py
+          python scripts/3-fetch-data.py
+
+      - name: Initialize & Build Gradle Project
+        run: |
+          cd MyPokemonGame
+          # Use the pre-installed Gradle on the runner to generate the wrapper
+          gradle wrapper
+          chmod +x gradlew
+          # Compile the generated structure into an APK
+          ./gradlew assembleDebug
+
+      - name: Upload Genesis APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Genesis-Pokemon-Engine
+          path: MyPokemonGame/app/build/outputs/apk/debug/app-debug.apk
