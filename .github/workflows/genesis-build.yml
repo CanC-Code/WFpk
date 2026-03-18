@@ -1,4 +1,4 @@
-name: Genesis 4.0 - Hoenn Architect Engine
+name: Genesis 4.1 - Hoenn Architect Engine
 
 on:
   push:
@@ -25,7 +25,7 @@ jobs:
         run: |
           cd MyPokemonGame
           
-          # --- SCRIPT 1: PROJECT SCAFFOLD (Gradle 9+ Compatible) ---
+          # --- SCRIPT 1: PROJECT SCAFFOLD (CRITICAL FIX) ---
           cat << 'EOF' > scripts/1-scaffold.py
           import os
           def create_file(path, content):
@@ -33,10 +33,12 @@ jobs:
               if dir_name: os.makedirs(dir_name, exist_ok=True)
               with open(path, 'w', encoding='utf-8') as f: f.write(content)
 
-          # New "Plugins" block syntax for Gradle 9 compatibility
           create_file("build.gradle", "plugins { id 'com.android.application' version '8.4.0' apply false }")
           create_file("settings.gradle", "pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }; dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }; include ':app'")
           
+          # THE FIX: Enabling AndroidX and Jetifier
+          create_file("gradle.properties", "android.useAndroidX=true\nandroid.enableJetifier=true")
+
           create_file("app/build.gradle", """
           plugins { id 'com.android.application' }
           android {
@@ -58,7 +60,7 @@ jobs:
           }
           """)
           
-          create_file("app/src/main/AndroidManifest.xml", '<?xml version="1.0" encoding="utf-8"?><manifest xmlns:android="http://schemas.android.com/apk/res/android"><application android:label="Genesis 4.0" android:theme="@style/Theme.Material3.DayNight.NoActionBar"><activity android:name=".MainActivity" android:exported="true" android:screenOrientation="landscape"><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity></application></manifest>')
+          create_file("app/src/main/AndroidManifest.xml", '<?xml version="1.0" encoding="utf-8"?><manifest xmlns:android="http://schemas.android.com/apk/res/android"><application android:label="Genesis 4.1" android:theme="@style/Theme.Material3.DayNight.NoActionBar"><activity android:name=".MainActivity" android:exported="true" android:screenOrientation="landscape"><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity></application></manifest>')
           EOF
 
           # --- SCRIPT 2: UI & OVERLAY ---
@@ -85,7 +87,7 @@ jobs:
           create_file("app/src/main/res/layout/activity_main.xml", layout)
           EOF
 
-          # --- SCRIPT 3: WORLD ASSETS (Pokemon + Map Tiles) ---
+          # --- SCRIPT 3: WORLD ASSETS (Pokemon + Tiles) ---
           cat << 'EOF' > scripts/3-assets.py
           import os, requests, json
           from PIL import Image, ImageDraw
@@ -93,21 +95,20 @@ jobs:
           os.makedirs("app/src/main/assets/sprites", exist_ok=True)
           os.makedirs("app/src/main/assets/tiles", exist_ok=True)
 
-          # Download Sprites
           for p in ["bulbasaur", "pikachu", "treecko"]:
               r = requests.get(f"https://pokeapi.co/api/v2/pokemon/{p}").json()
               img = requests.get(r['sprites']['front_default']).content
               with open(f"app/src/main/assets/sprites/{p}.png", 'wb') as f: f.write(img)
 
-          # Generate a basic Hoenn Tileset (Grass, House, Tree)
+          # Generate Tileset (Grass, House, Tree)
           tileset = Image.new("RGBA", (128, 64))
           draw = ImageDraw.Draw(tileset)
           draw.rectangle([0,0,64,64], fill="#4CAF50") # Grass
-          draw.rectangle([64,0,128,64], fill="#795548") # Tree/Wall
+          draw.rectangle([64,0,128,64], fill="#795548") # Wall/Tree
           tileset.save("app/src/main/assets/tiles/world_tiles.png")
           EOF
 
-          # --- SCRIPT 4: THE ENGINE (TileMap, Collision, Trailing) ---
+          # --- SCRIPT 4: THE ENGINE (Collision, Movement, Follower) ---
           cat << 'EOF' > scripts/4-engine.py
           import os
           def create_file(path, content):
@@ -117,7 +118,22 @@ jobs:
 
           java_path = "app/src/main/java/com/genesis/pokemon"
 
-          # GameView: Includes Tile Drawing and Collision logic
+          create_file(f"{java_path}/SpriteManager.java", """package com.genesis.pokemon;
+          import android.content.Context;
+          import android.graphics.Bitmap;
+          import android.graphics.BitmapFactory;
+          import java.util.HashMap;
+          public class SpriteManager {
+              private static HashMap<String, Bitmap> cache = new HashMap<>();
+              public static Bitmap get(Context ctx, String name) {
+                  if (cache.containsKey(name)) return cache.get(name);
+                  try {
+                      Bitmap b = BitmapFactory.decodeStream(ctx.getAssets().open("sprites/" + name + ".png"));
+                      cache.get(name); cache.put(name, b); return b;
+                  } catch (Exception e) { return null; }
+              }
+          }""")
+
           create_file(f"{java_path}/GameView.java", """package com.genesis.pokemon;
           import android.content.Context;
           import android.graphics.*;
@@ -128,18 +144,17 @@ jobs:
           public class GameView extends SurfaceView implements Runnable {
               private Thread thread;
               private boolean r;
+              private Paint p = new Paint();
               public float px=128, py=128, fx=128, fy=128;
               public boolean mU, mD, mL, mR;
               private LinkedList<PointF> history = new LinkedList<>();
               
-              // 0=Grass, 1=Tree(Solid)
               private int[][] map = {
-                  {1,1,1,1,1,1,1,1},
-                  {1,0,0,0,0,0,0,1},
-                  {1,0,1,1,0,0,0,1},
-                  {1,0,1,1,0,0,0,1},
-                  {1,0,0,0,0,0,0,1},
-                  {1,1,1,1,1,1,1,1}
+                  {1,1,1,1,1,1,1,1,1,1},
+                  {1,0,0,0,0,0,0,0,0,1},
+                  {1,0,1,1,0,0,1,1,0,1},
+                  {1,0,0,0,0,0,0,0,0,1},
+                  {1,1,1,1,1,1,1,1,1,1}
               };
 
               public GameView(Context c, AttributeSet a) { super(c, a); }
@@ -160,7 +175,6 @@ jobs:
                   float tx = px, ty = py;
                   if (mU) ty -= s; if (mD) ty += s; if (mL) tx -= s; if (mR) tx += s;
 
-                  // Simple Collision: Check if target grid is solid
                   int gridX = (int)(tx / 64), gridY = (int)(ty / 64);
                   if (gridY >= 0 && gridY < map.length && gridX >= 0 && gridX < map[0].length) {
                       if (map[gridY][gridX] == 0) { px = tx; py = ty; }
@@ -174,15 +188,12 @@ jobs:
 
               private void drawGame(Canvas c) {
                   c.drawColor(Color.BLACK);
-                  Paint p = new Paint();
-                  // Draw Tile Map
                   for (int y=0; y<map.length; y++) {
-                      for (int x=0; x<map[y].length; x++) {
+                      for (int x=0; x<map[0].length; x++) {
                           p.setColor(map[y][x] == 1 ? Color.parseColor("#2E7D32") : Color.parseColor("#4CAF50"));
                           c.drawRect(x*64, y*64, (x+1)*64, (y+1)*64, p);
                       }
                   }
-                  // Draw Sprites
                   Bitmap pS = SpriteManager.get(getContext(), "bulbasaur");
                   Bitmap fS = SpriteManager.get(getContext(), "pikachu");
                   if (pS != null) c.drawBitmap(pS, px-32, py-32, null);
@@ -191,24 +202,7 @@ jobs:
               public void resume() { r = true; thread = new Thread(this); thread.start(); }
               public void pause() { r = false; }
           }""")
-          
-          # SpriteManager and MainActivity (Same as previous but clean)
-          create_file(f"{java_path}/SpriteManager.java", """package com.genesis.pokemon;
-          import android.content.Context;
-          import android.graphics.Bitmap;
-          import android.graphics.BitmapFactory;
-          import java.util.HashMap;
-          public class SpriteManager {
-              private static HashMap<String, Bitmap> cache = new HashMap<>();
-              public static Bitmap get(Context ctx, String name) {
-                  if (cache.containsKey(name)) return cache.get(name);
-                  try {
-                      Bitmap b = BitmapFactory.decodeStream(ctx.getAssets().open("sprites/" + name + ".png"));
-                      cache.put(name, b); return b;
-                  } catch (Exception e) { return null; }
-              }
-          }""")
-          
+
           create_file(f"{java_path}/MainActivity.java", """package com.genesis.pokemon;
           import android.app.Activity;
           import android.os.Bundle;
@@ -242,10 +236,9 @@ jobs:
           python scripts/3-assets.py
           python scripts/4-engine.py
 
-      - name: Build APK (Pinned Version)
+      - name: Build APK (Pinned Gradle 8.7)
         run: |
           cd MyPokemonGame
-          # Downgrade wrapper to 8.7 to avoid Gradle 9 API breaks
           gradle wrapper --gradle-version 8.7
           chmod +x gradlew
           ./gradlew assembleDebug
@@ -253,5 +246,5 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Genesis-4.0-APK
+          name: Genesis-4.1-APK
           path: MyPokemonGame/app/build/outputs/apk/debug/app-debug.apk
