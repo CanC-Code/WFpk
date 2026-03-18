@@ -1,4 +1,4 @@
-name: Genesis Pokemon Engine Build
+name: Genesis 3.0 - Full Pokemon Engine
 
 on:
   push:
@@ -6,176 +6,201 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-from-scratch:
+  build-engine:
     runs-on: ubuntu-latest
     steps:
-      - name: Set up JDK 17
+      - name: Set up Environment
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Install System Dependencies
-        run: |
-          sudo apt-get update
-          pip install Pillow requests
+      - name: Install Build Tools
+        run: pip install Pillow requests
 
-      - name: Create Workspace
+      - name: Initialize Project Workspace
         run: mkdir -p MyPokemonGame/scripts
 
-      - name: Generate Genesis Scripts
+      - name: Genesis Factory Execution
         run: |
-          # --- SCRIPT 1: PROJECT SCAFFOLD (Fixed makedirs) ---
-          cat << 'EOF' > MyPokemonGame/scripts/1-scaffold.py
+          cd MyPokemonGame
+          
+          # --- SCRIPT 1: SYSTEM SCAFFOLDING ---
+          cat << 'EOF' > scripts/1-scaffold.py
           import os
           def create_file(path, content):
               dir_name = os.path.dirname(path)
-              if dir_name:
-                  os.makedirs(dir_name, exist_ok=True)
-              with open(path, 'w', encoding='utf-8') as f:
-                  f.write(content)
+              if dir_name: os.makedirs(dir_name, exist_ok=True)
+              with open(path, 'w', encoding='utf-8') as f: f.write(content)
 
+          # Gradle and Manifest
           create_file("build.gradle", "buildscript { repositories { google(); mavenCentral() }; dependencies { classpath 'com.android.tools.build:gradle:8.1.0' } }; allprojects { repositories { google(); mavenCentral() } }")
           create_file("settings.gradle", "include ':app'")
-          create_file("app/build.gradle", "plugins { id 'com.android.application' }; android { namespace 'com.genesis.pokemon'; compileSdk 34; defaultConfig { applicationId 'com.genesis.pokemon'; minSdk 24; targetSdk 34; versionCode 1; versionName '1.0' }; buildTypes { release { minifyEnabled false } }; compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 } }; dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }")
-          create_file("app/src/main/AndroidManifest.xml", '<?xml version="1.0" encoding="utf-8"?><manifest xmlns:android="http://schemas.android.com/apk/res/android"><application android:allowBackup="true" android:label="Genesis" android:theme="@style/Theme.AppCompat.Light.NoActionBar"><activity android:name=".MainActivity" android:exported="true" android:screenOrientation="landscape"><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity></application></manifest>')
+          create_file("app/build.gradle", "plugins { id 'com.android.application' }; android { namespace 'com.genesis.pokemon'; compileSdk 34; defaultConfig { applicationId 'com.genesis.pokemon'; minSdk 24; targetSdk 34; versionCode 1; versionName '1.0' }; buildTypes { release { minifyEnabled false } }; compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 } }; dependencies { implementation 'androidx.appcompat:appcompat:1.6.1'; implementation 'com.google.android.material:material:1.9.0' }")
+          create_file("app/src/main/AndroidManifest.xml", '<?xml version="1.0" encoding="utf-8"?><manifest xmlns:android="http://schemas.android.com/apk/res/android"><application android:label="Genesis 3.0" android:theme="@style/Theme.Material3.DayNight.NoActionBar"><activity android:name=".MainActivity" android:exported="true" android:screenOrientation="landscape"><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity><activity android:name=".PokedexActivity" android:screenOrientation="portrait"/></application></manifest>')
           EOF
 
-          # --- SCRIPT 2: CONTROLLER & UI ---
-          cat << 'EOF' > MyPokemonGame/scripts/2-controller.py
+          # --- SCRIPT 2: UI & CONTROLLER (A/B/Start/Select) ---
+          cat << 'EOF' > scripts/2-ui.py
           import os
           def create_file(path, content):
               dir_name = os.path.dirname(path)
               if dir_name: os.makedirs(dir_name, exist_ok=True)
               with open(path, 'w', encoding='utf-8') as f: f.write(content)
 
-          layout_xml = """<?xml version="1.0" encoding="utf-8"?>
-          <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent">
+          layout = """<?xml version="1.0" encoding="utf-8"?>
+          <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000000">
               <com.genesis.pokemon.GameView android:id="@+id/game_viewport" android:layout_width="match_parent" android:layout_height="match_parent" />
-              <RelativeLayout android:layout_width="150dp" android:layout_height="150dp" android:layout_alignParentBottom="true" android:layout_margin="20dp">
-                  <Button android:id="@+id/btn_up" android:layout_width="50dp" android:layout_height="50dp" android:text="U" android:layout_centerHorizontal="true"/>
-                  <Button android:id="@+id/btn_down" android:layout_width="50dp" android:layout_height="50dp" android:text="D" android:layout_alignParentBottom="true" android:layout_centerHorizontal="true"/>
-                  <Button android:id="@+id/btn_left" android:layout_width="50dp" android:layout_height="50dp" android:text="L" android:layout_centerVertical="true"/>
-                  <Button android:id="@+id/btn_right" android:layout_width="50dp" android:layout_height="50dp" android:text="R" android:layout_centerVertical="true" android:layout_alignParentEnd="true"/>
+              <GridLayout android:layout_width="150dp" android:layout_height="150dp" android:layout_alignParentBottom="true" android:columnCount="3" android:rowCount="3" android:layout_margin="10dp">
+                  <View android:layout_width="50dp" android:layout_height="50dp"/> <Button android:id="@+id/btn_up" android:layout_width="50dp" android:layout_height="50dp" android:text="▲"/> <View android:layout_width="50dp" android:layout_height="50dp"/>
+                  <Button android:id="@+id/btn_left" android:layout_width="50dp" android:layout_height="50dp" android:text="◀"/> <View android:layout_width="50dp" android:layout_height="50dp"/> <Button android:id="@+id/btn_right" android:layout_width="50dp" android:layout_height="50dp" android:text="▶"/>
+                  <View android:layout_width="50dp" android:layout_height="50dp"/> <Button android:id="@+id/btn_down" android:layout_width="50dp" android:layout_height="50dp" android:text="▼"/> <View android:layout_width="50dp" android:layout_height="50dp"/>
+              </GridLayout>
+              <RelativeLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentBottom="true" android:layout_alignParentEnd="true" android:layout_margin="20dp">
+                  <Button android:id="@+id/btn_b" android:layout_width="70dp" android:layout_height="70dp" android:text="B" android:backgroundTint="#F44336" android:layout_marginEnd="80dp"/>
+                  <Button android:id="@+id/btn_a" android:layout_width="70dp" android:layout_height="70dp" android:text="A" android:backgroundTint="#2196F3" android:layout_toEndOf="@id/btn_b" android:layout_marginTop="-20dp"/>
               </RelativeLayout>
-              <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentBottom="true" android:layout_alignParentEnd="true" android:layout_margin="30dp">
-                  <Button android:id="@+id/btn_b" android:layout_width="60dp" android:layout_height="60dp" android:text="B" android:layout_marginEnd="10dp" android:backgroundTint="#FF5252"/>
-                  <Button android:id="@+id/btn_a" android:layout_width="60dp" android:layout_height="60dp" android:text="A" android:backgroundTint="#448AFF"/>
-              </LinearLayout>
+              <Button android:id="@+id/btn_start" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="MENU" android:layout_centerHorizontal="true" android:layout_alignParentBottom="true" android:layout_marginBottom="10dp" android:backgroundTint="#757575" android:textSize="10sp"/>
           </RelativeLayout>"""
-          create_file("app/src/main/res/layout/activity_main.xml", layout_xml)
-          create_file("app/src/main/res/values/strings.xml", '<resources><string name="app_name">Genesis</string></resources>')
+          create_file("app/src/main/res/layout/activity_main.xml", layout)
           EOF
 
-          # --- SCRIPT 3: ASSET RIPPER ---
-          cat << 'EOF' > MyPokemonGame/scripts/3-fetch-data.py
-          import os, requests
+          # --- SCRIPT 3: MULTITHREADED ASSET RIPPER ---
+          cat << 'EOF' > scripts/3-assets.py
+          import os, requests, json
+          from concurrent.futures import ThreadPoolExecutor
+
           os.makedirs("app/src/main/assets/sprites", exist_ok=True)
-          pokemon = ["bulbasaur", "charmander", "squirtle", "pikachu"]
-          for p in pokemon:
-              res = requests.get(f"https://pokeapi.co/api/v2/pokemon/{p}")
-              if res.status_code == 200:
-                  img_url = res.json()['sprites']['front_default']
-                  with open(f"app/src/main/assets/sprites/{p}.png", 'wb') as f: f.write(requests.get(img_url).content)
+          os.makedirs("app/src/main/assets/sounds", exist_ok=True)
+          pokedex_data = []
+
+          def fetch_pokemon(p_id):
+              try:
+                  res = requests.get(f"https://pokeapi.co/api/v2/pokemon/{p_id}", timeout=10).json()
+                  name = res['name']
+                  # Download Sprite
+                  img_data = requests.get(res['sprites']['front_default']).content
+                  with open(f"app/src/main/assets/sprites/{name}.png", 'wb') as f: f.write(img_data)
+                  # Data for Pokedex
+                  return {"id": p_id, "name": name.capitalize(), "hp": res['stats'][0]['base_stat'], "atk": res['stats'][1]['base_stat']}
+              except: return None
+
+          print("Ripping 151 Pokemon...")
+          with ThreadPoolExecutor(max_workers=10) as ex:
+              pokedex_data = list(filter(None, ex.map(fetch_pokemon, range(1, 152))))
+          
+          with open("app/src/main/assets/pokedex.json", 'w') as f: json.dump(pokedex_data, f)
           EOF
 
-          # --- SCRIPT 4: THE ENGINE (Physics, Follower, Collision) ---
-          cat << 'EOF' > MyPokemonGame/scripts/4-engine.py
+          # --- SCRIPT 4: CORE ENGINE (Grid, Following, Rustle) ---
+          cat << 'EOF' > scripts/4-engine.py
           import os
           def create_file(path, content):
               dir_name = os.path.dirname(path)
               if dir_name: os.makedirs(dir_name, exist_ok=True)
               with open(path, 'w', encoding='utf-8') as f: f.write(content)
 
-          java_pkg = "app/src/main/java/com/genesis/pokemon"
+          java_path = "app/src/main/java/com/genesis/pokemon"
           
-          # MainActivity
+          create_file(f"{java_path}/GameView.java", """package com.genesis.pokemon;
+          import android.content.Context;
+          import android.graphics.*;
+          import android.util.AttributeSet;
+          import android.view.SurfaceView;
+          import java.util.LinkedList;
+
+          public class GameView extends SurfaceView implements Runnable {
+              private Thread thread;
+              private boolean running;
+              public float px = 64, py = 64; // Player (Grid units)
+              public float fx = 64, fy = 128; // Follower
+              public boolean mU, mD, mL, mR;
+              private LinkedList<PointF> history = new LinkedList<>();
+
+              public GameView(Context c, AttributeSet a) { super(c, a); }
+
+              @Override public void run() {
+                  while (running) {
+                      if (!getHolder().getSurface().isValid()) continue;
+                      Canvas canvas = getHolder().lockCanvas();
+                      update();
+                      drawFrame(canvas);
+                      getHolder().unlockCanvasAndPost(canvas);
+                      try { Thread.sleep(16); } catch (Exception e) {}
+                  }
+              }
+
+              private void update() {
+                  float speed = 4;
+                  float oldX = px, oldY = py;
+                  if (mU) py -= speed; if (mD) py += speed;
+                  if (mL) px -= speed; if (mR) px += speed;
+
+                  if (px != oldX || py != oldY) {
+                      history.addFirst(new PointF(px, py));
+                      if (history.size() > 20) {
+                          PointF last = history.removeLast();
+                          fx = last.x; fy = last.y;
+                      }
+                  }
+              }
+
+              private void drawFrame(Canvas c) {
+                  c.drawColor(Color.parseColor("#388E3C")); // Grass
+                  Paint p = new Paint();
+                  // Draw Rustling Grass (Simple Circles)
+                  p.setColor(Color.parseColor("#2E7D32"));
+                  for(int i=0; i<20; i++) for(int j=0; j<20; j++) c.drawCircle(i*100, j*100, 10, p);
+                  
+                  p.setColor(Color.WHITE);
+                  c.drawRect(px-32, py-32, px+32, py+32, p); // Player
+                  p.setColor(Color.YELLOW);
+                  c.drawCircle(fx, fy, 20, p); // Follower
+              }
+              
+              public void resume() { running = true; thread = new Thread(this); thread.start(); }
+              public void pause() { running = false; }
+          }""")
+          
           create_file(f"{java_pkg}/MainActivity.java", """package com.genesis.pokemon;
           import android.app.Activity;
           import android.os.Bundle;
           import android.view.MotionEvent;
-          import android.view.View;
-          import android.widget.Button;
-
           public class MainActivity extends Activity {
               private GameView gv;
               @Override protected void onCreate(Bundle b) {
                   super.onCreate(b);
                   setContentView(R.layout.activity_main);
                   gv = findViewById(R.id.game_viewport);
-                  setupBtn(R.id.btn_up, 1); setupBtn(R.id.btn_down, 2);
-                  setupBtn(R.id.btn_left, 3); setupBtn(R.id.btn_right, 4);
+                  bind(R.id.btn_up, 1); bind(R.id.btn_down, 2);
+                  bind(R.id.btn_left, 3); bind(R.id.btn_right, 4);
               }
-              private void setupBtn(int id, int dir) {
+              private void bind(int id, int d) {
                   findViewById(id).setOnTouchListener((v, e) -> {
-                      boolean p = (e.getAction() == MotionEvent.ACTION_DOWN || e.getAction() == MotionEvent.ACTION_MOVE);
-                      if (dir == 1) gv.mU = p; if (dir == 2) gv.mD = p;
-                      if (dir == 3) gv.mL = p; if (dir == 4) gv.mR = p;
+                      boolean p = e.getAction() == MotionEvent.ACTION_DOWN || e.getAction() == MotionEvent.ACTION_MOVE;
+                      if (d==1) gv.mU=p; if (d==2) gv.mD=p; if (d==3) gv.mL=p; if (d==4) gv.mR=p;
                       return true;
                   });
               }
-          }""")
-
-          # GameView (The Canvas Engine)
-          create_file(f"{java_pkg}/GameView.java", """package com.genesis.pokemon;
-          import android.content.Context;
-          import android.graphics.*;
-          import android.util.AttributeSet;
-          import android.view.SurfaceView;
-          import android.view.SurfaceHolder;
-
-          public class GameView extends SurfaceView implements Runnable {
-              private Thread t;
-              private boolean r;
-              private Paint p = new Paint();
-              public float px = 200, py = 200, fx = 200, fy = 250;
-              public boolean mU, mD, mL, mR;
-
-              public GameView(Context c, AttributeSet a) { super(c, a); }
-
-              @Override public void run() {
-                  while (r) {
-                      if (!getHolder().getSurface().isValid()) continue;
-                      Canvas c = getHolder().lockCanvas();
-                      update();
-                      drawGame(c);
-                      getHolder().unlockCanvasAndPost(c);
-                  }
-              }
-              private void update() {
-                  float s = 8;
-                  if (mU) py -= s; if (mD) py += s; if (mL) px -= s; if (mR) px += s;
-                  // Trailing Logic
-                  float dx = px - fx, dy = py - fy;
-                  if (Math.sqrt(dx*dx + dy*dy) > 80) { fx += dx * 0.1f; fy += dy * 0.1f; }
-              }
-              private void drawGame(Canvas c) {
-                  c.drawColor(Color.parseColor("#4CAF50")); // Grass
-                  p.setColor(Color.BLUE); c.drawRect(px-20, py-20, px+20, py+20, p); // Player
-                  p.setColor(Color.RED); c.drawRect(fx-15, fy-15, fx+15, fy+15, p);  // Follower
-              }
-              public void resume() { r = true; t = new Thread(this); t.start(); }
-              public void pause() { r = false; try { t.join(); } catch (Exception e) {} }
+              @Override protected void onResume() { super.onResume(); gv.resume(); }
           }""")
           EOF
 
-      - name: Execute Genesis Pipeline
-        run: |
-          cd MyPokemonGame
+          # Execute Pipeline
           python scripts/1-scaffold.py
-          python scripts/2-controller.py
-          python scripts/3-fetch-data.py
+          python scripts/2-ui.py
+          python scripts/3-assets.py
           python scripts/4-engine.py
 
-      - name: Build APK
+      - name: Assemble APK
         run: |
           cd MyPokemonGame
           gradle wrapper
           chmod +x gradlew
           ./gradlew assembleDebug
 
-      - name: Upload APK
+      - name: Archive Genesis APK
         uses: actions/upload-artifact@v4
         with:
-          name: Genesis-Engine-v2
+          name: Genesis-3.0-Build
           path: MyPokemonGame/app/build/outputs/apk/debug/app-debug.apk
