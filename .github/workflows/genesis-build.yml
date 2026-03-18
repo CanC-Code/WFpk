@@ -1,184 +1,99 @@
-name: Genesis 11.0 - Platinum Perfection
+﻿2026-03-18T06:08:47.2091685Z ##[group]Run cd MyPokemonGame
+cd MyPokemonGame
+python scripts/1-scaffold.py
+python scripts/2-ui.py
+python scripts/3-assets.py
+python scripts/4-engine.py
+gradle wrapper --gradle-version 8.7
+chmod +x gradlew
+./gradlew assembleDebug
+shell: /usr/bin/bash -e {0}
+env:
+  JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.18-8/x64
+  JAVA_HOME_17_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.18-8/x64
 
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
+Welcome to Gradle 9.4.0!
 
-jobs:
-  build-engine:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
+Here are the highlights of this release:
+ - Java 26 support
+ - Non-class-based JVM tests
+ - Enhanced console progress bar
 
-      - name: Install Dependencies
-        run: pip install Pillow requests
+For more details see https://docs.gradle.org/9.4.0/release-notes.html
 
-      - name: Initialize Workspace
-        run: mkdir -p MyPokemonGame/scripts
+Starting a Gradle Daemon (subsequent builds will be faster)
+> Task :wrapper
 
-      - name: Generate Genesis Scripts
-        run: |
-          cd MyPokemonGame
-          
-          # --- 1. SCAFFOLD (AndroidX + Build Tools) ---
-          cat << 'EOF' > scripts/1-scaffold.py
-          import os
-          def create_file(path, content):
-              dir_name = os.path.dirname(path)
-              if dir_name: os.makedirs(dir_name, exist_ok=True)
-              with open(path, 'w', encoding='utf-8') as f: f.write(content)
-          create_file("build.gradle", "plugins { id 'com.android.application' version '8.4.0' apply false }")
-          create_file("settings.gradle", "pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }; dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }; include ':app'")
-          create_file("gradle.properties", "android.useAndroidX=true\nandroid.enableJetifier=true")
-          create_file("app/build.gradle", "plugins { id 'com.android.application' }; android { namespace 'com.genesis.pokemon'; compileSdk 34; defaultConfig { applicationId 'com.genesis.pokemon'; minSdk 24; targetSdk 34; versionCode 1; versionName '1.0' }; buildTypes { release { minifyEnabled false } }; compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 } }; dependencies { implementation 'androidx.appcompat:appcompat:1.6.1'; implementation 'com.google.android.material:material:1.9.0' }")
-          create_file("app/src/main/AndroidManifest.xml", '<?xml version="1.0" encoding="utf-8"?><manifest xmlns:android="http://schemas.android.com/apk/res/android"><application android:label="Pokemon Platinum" android:theme="@style/Theme.Material3.DayNight.NoActionBar"><activity android:name=".MainActivity" android:exported="true" android:screenOrientation="landscape"><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity></application></manifest>')
-          EOF
+[Incubating] Problems report is available at: file:///home/runner/work/WFpk/WFpk/MyPokemonGame/build/reports/problems/problems-report.html
 
-          # --- 2. UI (Joystick & Menu) ---
-          cat << 'EOF' > scripts/2-ui.py
-          import os
-          def create_file(path, content):
-              dir_name = os.path.dirname(path)
-              if dir_name: os.makedirs(dir_name, exist_ok=True)
-              with open(path, 'w', encoding='utf-8') as f: f.write(content)
-          layout = """<?xml version="1.0" encoding="utf-8"?>
-          <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000000">
-              <com.genesis.pokemon.GameView android:id="@+id/game_viewport" android:layout_width="match_parent" android:layout_height="match_parent" />
-              <View android:id="@+id/joystick_base" android:layout_width="160dp" android:layout_height="160dp" android:layout_gravity="bottom|start" android:layout_margin="30dp" android:background="@android:drawable/btn_default_small" android:alpha="0.3"/>
-              <RelativeLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="bottom|end" android:layout_margin="30dp">
-                  <Button android:id="@+id/btn_b" android:layout_width="70dp" android:layout_height="70dp" android:text="B" android:backgroundTint="#D32F2F" android:layout_marginEnd="10dp"/>
-                  <Button android:id="@+id/btn_a" android:layout_width="70dp" android:layout_height="70dp" android:text="A" android:backgroundTint="#1976D2" android:layout_toEndOf="@id/btn_b" android:layout_marginTop="-20dp"/>
-              </RelativeLayout>
-          </FrameLayout>"""
-          create_file("app/src/main/res/layout/activity_main.xml", layout)
-          EOF
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
 
-          # --- 3. ASSETS (Sinnoh Sprite Sheets) ---
-          cat << 'EOF' > scripts/3-assets.py
-          import os, requests
-          from PIL import Image
-          os.makedirs("app/src/main/assets/sprites", exist_ok=True)
-          os.makedirs("app/src/main/assets/tiles", exist_ok=True)
-          # Fetching real walking sheets from Pokemon Emerald/Platinum Decomp
-          # Trainer Walking Sheet (4 rows for 4 directions)
-          trainer_url = "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/object_events/pics/people/brendan/normal.png"
-          with open("app/src/main/assets/sprites/trainer_sheet.png", 'wb') as f:
-              f.write(requests.get(trainer_url).content)
-          # World Tileset (Houses, Grass, Center)
-          tiles_url = "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/tilesets/secondary/petalburg/tiles.png"
-          with open("app/src/main/assets/tiles/world_tiles.png", 'wb') as f:
-              f.write(requests.get(tiles_url).content)
-          EOF
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
 
-          # --- 4. ENGINE (The Frame Slicer) ---
-          cat << 'EOF' > scripts/4-engine.py
-          import os
-          def create_file(path, content):
-              dir_name = os.path.dirname(path)
-              if dir_name: os.makedirs(dir_name, exist_ok=True)
-              with open(path, 'w', encoding='utf-8') as f: f.write(content)
-          java_path = "app/src/main/java/com/genesis/pokemon"
+For more on this, please refer to https://docs.gradle.org/9.4.0/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-          create_file(f"{java_path}/GameView.java", """package com.genesis.pokemon;
-          import android.content.Context;
-          import android.graphics.*;
-          import android.util.AttributeSet;
-          import android.view.SurfaceView;
+BUILD SUCCESSFUL in 35s
+1 actionable task: 1 executed
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.4.0/userguide/configuration_cache_enabling.html
+Downloading https://services.gradle.org/distributions/gradle-8.7-bin.zip
+............10%.............20%.............30%.............40%............50%.............60%.............70%.............80%.............90%............100%
 
-          public class GameView extends SurfaceView implements Runnable {
-              private Thread thread;
-              private boolean running;
-              public float px=300, py=300, vx=0, vy=0;
-              private int direction = 0; // 0=Down, 1=Up, 2=Left, 3=Right
-              private int animFrame = 0;
-              private int frameCounter = 0;
+Welcome to Gradle 8.7!
 
-              public GameView(Context c, AttributeSet a) { super(c, a); }
+Here are the highlights of this release:
+ - Compiling and testing with Java 22
+ - Cacheable Groovy script compilation
+ - New methods in lazy collection properties
 
-              @Override public void run() {
-                  while (running) {
-                      if (!getHolder().getSurface().isValid()) continue;
-                      Canvas canvas = getHolder().lockCanvas();
-                      update();
-                      drawFrame(canvas);
-                      getHolder().unlockCanvasAndPost(canvas);
-                      try { Thread.sleep(16); } catch (Exception e) {}
-                  }
-              }
+For more details see https://docs.gradle.org/8.7/release-notes.html
 
-              private void update() {
-                  float speed = 6;
-                  // Dominant Axis Snapping for strict 4-way movement
-                  if (Math.abs(vx) > Math.abs(vy)) {
-                      px += Math.signum(vx) * speed;
-                      direction = (vx > 0) ? 3 : 2;
-                  } else if (vy != 0) {
-                      py += Math.signum(vy) * speed;
-                      direction = (vy > 0) ? 0 : 1;
-                  }
-                  
-                  if (vx != 0 || vy != 0) {
-                      frameCounter++;
-                      if (frameCounter > 8) { animFrame = (animFrame + 1) % 3; frameCounter = 0; }
-                  } else { animFrame = 1; } // Idle frame
-              }
+Starting a Gradle Daemon (subsequent builds will be faster)
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:javaPreCompileDebug
+> Task :app:generateDebugResValues
+> Task :app:checkDebugAarMetadata
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:mergeDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:parseDebugLocalResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets
+> Task :app:desugarDebugFileDependencies
+> Task :app:processDebugJavaRes NO-SOURCE
+> Task :app:processDebugManifestForPackage
+> Task :app:compressDebugAssets
+> Task :app:processDebugResources
+> Task :app:mergeDebugJavaResource
 
-              private void drawFrame(Canvas canvas) {
-                  canvas.drawColor(Color.parseColor("#388E3C")); // Grass
-                  
-                  Bitmap sheet = BitmapFactory.decodeStream(null); // Managed by SpriteManager
-                  try {
-                      InputStream is = getContext().getAssets().open("sprites/trainer_sheet.png");
-                      Bitmap b = BitmapFactory.decodeStream(is);
-                      // Slicing Brendan: 16x32 pixels per frame
-                      int srcX = animFrame * 16;
-                      int srcY = direction * 32;
-                      Rect src = new Rect(srcX, srcY, srcX + 16, srcY + 32);
-                      Rect dst = new Rect((int)px-32, (int)py-64, (int)px+32, (int)py+64);
-                      canvas.drawBitmap(b, src, dst, null);
-                  } catch (Exception e) {}
-              }
-              public void resume() { running = true; thread = new Thread(this); thread.start(); }
-              public void pause() { running = false; }
-          }""")
-          
-          # Fix MainActivity
-          create_file(f"{java_path}/MainActivity.java", """package com.genesis.pokemon;
-          import android.app.Activity;
-          import android.os.Bundle;
-          import android.view.MotionEvent;
+> Task :app:compileDebugJavaWithJavac
+/home/runner/work/WFpk/WFpk/MyPokemonGame/app/src/main/java/com/genesis/pokemon/GameView.java:50: error: cannot find symbol
+            InputStream is = getContext().getAssets().open("sprites/trainer_sheet.png");
+            ^
+  symbol:   class InputStream
+  location: class GameView
+1 error
 
-          public class MainActivity extends Activity {
-              private GameView gv;
-              @Override protected void onCreate(Bundle b) {
-                  super.onCreate(b);
-                  setContentView(R.layout.activity_main);
-                  gv = findViewById(R.id.game_viewport);
-                  findViewById(R.id.joystick_base).setOnTouchListener((v, e) -> {
-                      if (e.getAction() == MotionEvent.ACTION_UP) { gv.vx=0; gv.vy=0; }
-                      else {
-                          gv.vx = e.getX() - (v.getWidth()/2f);
-                          gv.vy = e.getY() - (v.getHeight()/2f);
-                      }
-                      return true;
-                  });
-              }
-              @Override protected void onResume() { super.onResume(); gv.resume(); }
-          }""")
-          EOF
 
-      - name: Build Project
-        run: |
-          cd MyPokemonGame
-          python scripts/1-scaffold.py
-          python scripts/2-ui.py
-          python scripts/3-assets.py
-          python scripts/4-engine.py
-          gradle wrapper --gradle-version 8.7
-          chmod +x gradlew
-          ./gradlew assembleDebug
+> Task :app:compileDebugJavaWithJavac FAILED
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugJavaWithJavac'.
+> Compilation failed; see the compiler error output for details.
+
+* Try:
+> Run with --info option to get more log output.
+> Run with --scan to get full insights.
+
+BUILD FAILED in 44s
+20 actionable tasks: 20 executed
+Process completed with exit code 1.
